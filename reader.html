@@ -114,7 +114,22 @@ body {
   text-indent: 2em; 
   word-break: break-all; 
 }
-  </style>
+ 
+  /* ... 这里是你原有的样式 ... */
+
+  /* 新增这段样式：让内容区里的所有段落首行缩进两个字 */
+  #content p {
+    text-indent: 2em;       /* 这是核心：缩进两个字符 */
+    margin-bottom: 0.8em;   /* 适当调整段落间距，让它看起来更紧凑 */
+    margin-top: 0;          /* 移除段落上方的多余空隙 */
+  }
+
+  /* 如果你想让标题也居中或者好看一点，可以顺便加这个 */
+  #content h2 {
+    text-align: center;
+    margin: 20px 0;
+  }
+ </style>
 </head>
 <body>
 
