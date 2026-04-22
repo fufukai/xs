@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阅读中...</title>
+  <!-- 用 marked.js 渲染 Markdown -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "PingFang SC", "Microsoft YaHei", Georgia, serif; background: #fdf6e3; color: #3d3020; }
+
+    /* 顶部导航 */
+    nav { background: #2c2c2c; color: white; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 1rem; position: sticky; top: 0; z-index: 10; }
+    nav a { color: #ccc; text-decoration: none; font-size: 0.85rem; }
+    nav a:hover { color: white; }
+    #nav-title { flex: 1; font-size: 0.95rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+    /* 章节目录侧边栏 */
+    #sidebar { position: fixed; top: 48px; left: 0; width: 260px; height: calc(100vh - 48px); background: white; border-right: 1px solid #e0e0e0; overflow-y: auto; transform: translateX(-100%); transition: transform 0.3s; z-index: 5; }
+    #sidebar.open { transform: translateX(0); }
+    #sidebar h3 { padding: 1rem; font-size: 0.9rem; color: #888; border-bottom: 1px solid #eee; font-weight: 400; }
+    #chapter-list a { display: block; padding: 0.6rem 1rem; font-size: 0.9rem; color: #333; text-decoration: none; border-bottom: 1px solid #f5f5f5; }
+    #chapter-list a:hover { background: #f5f0e8; }
+    #chapter-list a.active { color: #c0392b; font-weight: 500; }
+
+    /* 正文区域 */
+    #content { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 4rem; min-height: 80vh; }
+    #content h2 { font-size: 1.3rem; margin-bottom: 2rem; font-weight: 500; text-align: center; }
+    #content p { font-size: 1.05rem; line-height: 2; margin-bottom: 1em; text-indent: 2em; }
+
+    /* 翻页按钮 */
+    .pager { display: flex; justify-content: space-between; padding: 1.5rem; max-width: 720px; margin: 0 auto; }
+    .pager button { padding: 0.6rem 1.5rem; background: #2c2c2c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+    .pager button:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* 设置面板 */
+    #settings { position: fixed; bottom: 1rem; right: 1rem; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); display: none; }
+    #settings label { font-size: 0.85rem; color: #666; }
+    #settings select, #settings input[type=range] { margin-top: 0.25rem; width: 100%; }
+    .fab { position: fixed; bottom: 1rem; right: 1rem; width: 44px; height: 44px; background: #2c2c2c; color: white; border: none; border-radius: 50%; font-size: 1.2rem; cursor: pointer; z-index: 20; }
+    #loading { text-align: center; padding: 4rem; color: #888; }
+
+    /* --- 基础样式变量 --- */
+:root {
+  --bg-color: #fdf6e3;
+  --text-color: #3d3020;
+  --font-size: clamp(16px, 4vw, 24px); /* 自动在 16px 到 24px 之间缩放 */
+  --content-width: 90%;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body { 
+  font-family: "PingFang SC", "Microsoft YaHei", serif; 
+  background: var(--bg-color); 
+  color: var(--text-color);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* --- 1. 针对“小手表” (极小屏幕 < 300px) --- */
+@media (max-width: 300px) {
+  nav, .pager, .fab { display: none !important; } /* 隐藏所有导航，只留纯文本 */
+  #content { 
+    padding: 10px !important; 
+    font-size: 14px !important; 
+    text-indent: 1em !important;
+  }
+  #content h2 { font-size: 16px; margin-bottom: 10px; }
+}
+
+/* --- 2. 针对“手机” (移动端 300px - 768px) --- */
+@media (max-width: 768px) {
+  #content { 
+    max-width: 100%; 
+    padding: 1.5rem; 
+  }
+  .pager button { flex: 1; padding: 12px; } /* 按钮变大，方便手指点按 */
+  #sidebar { width: 80%; } /* 侧边栏几乎占满屏幕 */
+}
+
+/* --- 3. 针对“电脑/平板” (常规屏幕 769px - 1920px) --- */
+@media (min-width: 769px) and (max-width: 1920px) {
+  #content { 
+    max-width: 800px; 
+    margin: 0 auto; 
+    padding: 3rem 2rem; 
+  }
+}
+
+/* --- 4. 针对“4K 巨幕” (超大显示器 > 1920px) --- */
+@media (min-width: 1921px) {
+  #content {
+    max-width: 1800px; /* 增加容器宽度 */
+    column-count: 2;   /* 开启分栏阅读 */
+    column-gap: 100px; /* 栏间距 */
+    column-rule: 1px solid rgba(0,0,0,0.1); /* 分隔线 */
+    padding: 5rem;
+    font-size: 28px !important; /* 4K 下字太小会瞎眼 */
+  }
+  
+  #content p { margin-bottom: 1.5em; text-align: justify; }
+  
+  /* 针对 90 寸这种极端情况，如果 2 栏还太长，可以尝试 3 栏 */
+  @media (min-width: 3800px) {
+    #content { column-count: 3; max-width: 2800px; }
+  }
+}
+
+/* --- 通用正文样式 --- */
+#content p { 
+  margin-bottom: 1em; 
+  text-indent: 2em; 
+  word-break: break-all; 
+}
+  </style>
+</head>
+<body>
+
+<nav>
+  <button onclick="toggleSidebar()" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer">☰</button>
+  <a href="index.html">← 书架</a>
+  <span id="nav-title">加载中...</span>
+</nav>
+
+<div id="sidebar">
+  <h3>目录</h3>
+  <div id="chapter-list"></div>
+</div>
+
+<div id="content"><div id="loading">正在加载章节...</div></div>
+
+<div class="pager">
+  <button id="btn-prev" onclick="changePage(-1)" disabled>◀ 上一章</button>
+  <span id="page-info" style="align-self:center;color:#888;font-size:0.85rem"></span>
+  <button id="btn-next" onclick="changePage(1)">下一章 ▶</button>
+</div>
+
+<button class="fab" onclick="toggleSettings()">⚙</button>
+<div id="settings">
+  <label>背景色</label>
+  <select onchange="document.body.style.background=this.value">
+    <option value="#fdf6e3">护眼黄</option>
+    <option value="#e8f5e9">清新绿</option>
+    <option value="#ffffff">纯白</option>
+    <option value="#1a1a1a">夜间模式</option>
+  </select>
+  <label style="margin-top:0.75rem;display:block">字号</label>
+  <input type="range" min="14" max="22" value="17" oninput="document.querySelectorAll('#content p').forEach(p=>p.style.fontSize=this.value+'px')">
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const novelId = params.get("novel");
+  let currentChapter = parseInt(params.get("chapter")) || 1;
+  let novelInfo = null;
+
+  async function init() {
+    // 加载小说信息
+    const res = await fetch(`novels/${novelId}/info.json`);
+    novelInfo = await res.json();
+    document.title = novelInfo.title;
+    document.getElementById("nav-title").textContent = novelInfo.title;
+
+    // 渲染目录
+    const list = document.getElementById("chapter-list");
+    novelInfo.chapters.forEach(ch => {
+      const a = document.createElement("a");
+      a.textContent = ch.title;
+      a.href = "#";
+      a.onclick = (e) => { e.preventDefault(); goToChapter(ch.id); toggleSidebar(); };
+      a.id = `ch-link-${ch.id}`;
+      list.appendChild(a);
+    });
+
+    loadChapter(currentChapter);
+  }
+
+  async function loadChapter(num) {
+    currentChapter = num;
+    const url = `novels/${novelId}/${num}.md`;
+    history.replaceState(null, "", `?novel=${novelId}&chapter=${num}`);
+
+    document.getElementById("loading").style.display = "block";
+    const content = document.getElementById("content");
+    content.innerHTML = "<div id='loading'>正在加载...</div>";
+
+    const res = await fetch(url);
+    const md = await res.text();
+    content.innerHTML = marked.parse(md);
+    window.scrollTo(0, 0);
+
+    // 更新翻页按钮
+    const total = novelInfo.chapters.length;
+    document.getElementById("btn-prev").disabled = num <= 1;
+    document.getElementById("btn-next").disabled = num >= total;
+    document.getElementById("page-info").textContent = `${num} / ${total}`;
+
+    // 高亮当前章节
+    document.querySelectorAll("#chapter-list a").forEach(a => a.classList.remove("active"));
+    const cur = document.getElementById(`ch-link-${num}`);
+    if (cur) { cur.classList.add("active"); cur.scrollIntoView({ block: "nearest" }); }
+  }
+
+  function changePage(dir) { loadChapter(currentChapter + dir); }
+  function goToChapter(id) { loadChapter(id); }
+  function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
+  function toggleSettings() {
+    const s = document.getElementById("settings");
+    s.style.display = s.style.display === "block" ? "none" : "block";
+  }
+
+  init();
+</script>
+</body>
+</html>

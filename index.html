@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的小说站</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f5f0; color: #333; }
+    header { background: #2c2c2c; color: white; padding: 1.5rem 2rem; }
+    header h1 { font-size: 1.5rem; font-weight: 500; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; padding: 2rem; max-width: 1000px; margin: 0 auto; }
+    .card { background: white; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #e0e0e0; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+    .card-cover { width: 100%; aspect-ratio: 2/3; object-fit: cover; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+    .card-info { padding: 0.75rem; }
+    .card-title { font-size: 0.95rem; font-weight: 500; margin-bottom: 0.25rem; }
+    .card-author { font-size: 0.8rem; color: #888; }
+    #loading { text-align: center; padding: 3rem; color: #888; }
+  </style>
+</head>
+<body>
+  <header><h1>📚 我的书架</h1></header>
+  <div id="loading">加载中...</div>
+  <div class="grid" id="grid" style="display:none"></div>
+
+  <script>
+    // 在这里列出你的所有小说文件夹名
+    const NOVELS = ["dou-po-cang-qiong", "dou-luo-da-lu"];
+
+    async function loadNovels() {
+      const grid = document.getElementById("grid");
+      for (const id of NOVELS) {
+        try {
+          const res = await fetch(`novels/${id}/info.json`);
+          const info = await res.json();
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <div class="card-cover">${info.emoji || "📖"}</div>
+            <div class="card-info">
+              <div class="card-title">${info.title}</div>
+              <div class="card-author">${info.author}</div>
+            </div>`;
+          card.onclick = () => location.href = `reader.html?novel=${id}&chapter=1`;
+          grid.appendChild(card);
+        } catch(e) { console.warn("加载失败:", id); }
+      }
+      document.getElementById("loading").style.display = "none";
+      grid.style.display = "grid";
+    }
+    loadNovels();
+  </script>
+</body>
+</html>
