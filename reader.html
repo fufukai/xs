@@ -1,232 +1,614 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>阅读中...</title>
-  <!-- 用 marked.js 渲染 Markdown -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: "PingFang SC", "Microsoft YaHei", Georgia, serif; background: #fdf6e3; color: #3d3020; }
-
-    /* 顶部导航 */
-    nav { background: #2c2c2c; color: white; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 1rem; position: sticky; top: 0; z-index: 10; }
-    nav a { color: #ccc; text-decoration: none; font-size: 0.85rem; }
-    nav a:hover { color: white; }
-    #nav-title { flex: 1; font-size: 0.95rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-
-    /* 章节目录侧边栏 */
-    #sidebar { position: fixed; top: 48px; left: 0; width: 260px; height: calc(100vh - 48px); background: white; border-right: 1px solid #e0e0e0; overflow-y: auto; transform: translateX(-100%); transition: transform 0.3s; z-index: 5; }
-    #sidebar.open { transform: translateX(0); }
-    #sidebar h3 { padding: 1rem; font-size: 0.9rem; color: #888; border-bottom: 1px solid #eee; font-weight: 400; }
-    #chapter-list a { display: block; padding: 0.6rem 1rem; font-size: 0.9rem; color: #333; text-decoration: none; border-bottom: 1px solid #f5f5f5; }
-    #chapter-list a:hover { background: #f5f0e8; }
-    #chapter-list a.active { color: #c0392b; font-weight: 500; }
-
-    /* 正文区域 */
-    #content { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 4rem; min-height: 80vh; }
-    #content h2 { font-size: 1.3rem; margin-bottom: 2rem; font-weight: 500; text-align: center; }
-    #content p { font-size: 1.05rem; line-height: 2; margin-bottom: 1em; text-indent: 2em; }
-
-    /* 翻页按钮 */
-    .pager { display: flex; justify-content: space-between; padding: 1.5rem; max-width: 720px; margin: 0 auto; }
-    .pager button { padding: 0.6rem 1.5rem; background: #2c2c2c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
-    .pager button:disabled { background: #ccc; cursor: not-allowed; }
-
-    /* 设置面板 */
-    #settings { position: fixed; bottom: 1rem; right: 1rem; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); display: none; }
-    #settings label { font-size: 0.85rem; color: #666; }
-    #settings select, #settings input[type=range] { margin-top: 0.25rem; width: 100%; }
-    .fab { position: fixed; bottom: 1rem; right: 1rem; width: 44px; height: 44px; background: #2c2c2c; color: white; border: none; border-radius: 50%; font-size: 1.2rem; cursor: pointer; z-index: 20; }
-    #loading { text-align: center; padding: 4rem; color: #888; }
-
-    /* --- 基础样式变量 --- */
-:root {
-  --bg-color: #fdf6e3;
-  --text-color: #3d3020;
-  --font-size: clamp(16px, 4vw, 24px); /* 自动在 16px 到 24px 之间缩放 */
-  --content-width: 90%;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body { 
-  font-family: "PingFang SC", "Microsoft YaHei", serif; 
-  background: var(--bg-color); 
-  color: var(--text-color);
-  line-height: 1.8;
-  overflow-x: hidden;
-}
-
-/* --- 1. 针对“小手表” (极小屏幕 < 300px) --- */
-@media (max-width: 300px) {
-  nav, .pager, .fab { display: none !important; } /* 隐藏所有导航，只留纯文本 */
-  #content { 
-    padding: 10px !important; 
-    font-size: 14px !important; 
-    text-indent: 1em !important;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阅读</title>
+<style>
+  /* ===== 主题变量 ===== */
+  :root {
+    --bg: #fdf8f0;
+    --surface: #ffffff;
+    --border: #e8e2d5;
+    --text: #2a2318;
+    --text-sub: #7a7060;
+    --accent: #8b5e3c;
+    --accent-light: #f0e6da;
+    --nav-h: 52px;
+    --font-size: 18px;
+    --line-h: 2;
+    --col-width: 680px;
+    --radius: 10px;
   }
-  #content h2 { font-size: 16px; margin-bottom: 10px; }
-}
-
-/* --- 2. 针对“手机” (移动端 300px - 768px) --- */
-@media (max-width: 768px) {
-  #content { 
-    max-width: 100%; 
-    padding: 1.5rem; 
+  /* 夜间模式 */
+  [data-theme="dark"] {
+    --bg: #16130e;
+    --surface: #1e1a13;
+    --border: #33291e;
+    --text: #e8e0d0;
+    --text-sub: #8a8070;
+    --accent: #c49060;
+    --accent-light: #241e14;
   }
-  .pager button { flex: 1; padding: 12px; } /* 按钮变大，方便手指点按 */
-  #sidebar { width: 80%; } /* 侧边栏几乎占满屏幕 */
-}
-
-/* --- 3. 针对“电脑/平板” (常规屏幕 769px - 1920px) --- */
-@media (min-width: 769px) and (max-width: 1920px) {
-  #content { 
-    max-width: 800px; 
-    margin: 0 auto; 
-    padding: 3rem 2rem; 
+  /* 护眼模式 */
+  [data-theme="green"] {
+    --bg: #e8f0e0;
+    --surface: #f0f5e8;
+    --border: #c8d8b8;
+    --text: #1e2a18;
+    --text-sub: #5a6a50;
+    --accent: #4a7a30;
+    --accent-light: #d8ecc8;
   }
-}
-
-/* --- 4. 针对“4K 巨幕” (超大显示器 > 1920px) --- */
-@media (min-width: 1921px) {
-  #content {
-    max-width: 1800px; /* 增加容器宽度 */
-    column-count: 2;   /* 开启分栏阅读 */
-    column-gap: 100px; /* 栏间距 */
-    column-rule: 1px solid rgba(0,0,0,0.1); /* 分隔线 */
-    padding: 5rem;
-    font-size: 28px !important; /* 4K 下字太小会瞎眼 */
-  }
-  
-  #content p { margin-bottom: 1.5em; text-align: justify; }
-  
-  /* 针对 90 寸这种极端情况，如果 2 栏还太长，可以尝试 3 栏 */
-  @media (min-width: 3800px) {
-    #content { column-count: 3; max-width: 2800px; }
-  }
-}
-
-/* --- 通用正文样式 --- */
-#content p { 
-  margin-bottom: 1em; 
-  text-indent: 2em; 
-  word-break: break-all; 
-}
- 
-  /* ... 这里是你原有的样式 ... */
-
-  /* 新增这段样式：让内容区里的所有段落首行缩进两个字 */
-  #content p {
-    text-indent: 2em;       /* 这是核心：缩进两个字符 */
-    margin-bottom: 0.8em;   /* 适当调整段落间距，让它看起来更紧凑 */
-    margin-top: 0;          /* 移除段落上方的多余空隙 */
+  /* 羊皮纸 */
+  [data-theme="parchment"] {
+    --bg: #f4edd8;
+    --surface: #faf5e8;
+    --border: #d8c89a;
+    --text: #2a1e08;
+    --text-sub: #7a6840;
+    --accent: #9a6830;
+    --accent-light: #eaddb8;
   }
 
-  /* 如果你想让标题也居中或者好看一点，可以顺便加这个 */
-  #content h2 {
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "PingFang SC","Hiragino Sans GB","Microsoft YaHei","STSong",Georgia,serif;
+    transition: background 0.3s, color 0.3s;
+    min-height: 100vh;
+  }
+
+  /* ===== 顶部导航 ===== */
+  #topnav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--nav-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    gap: 0.5rem;
+    z-index: 100;
+    transition: background 0.3s;
+  }
+  .nav-btn {
+    background: none;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 1rem;
+    line-height: 1;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-btn:hover { background: var(--accent-light); }
+  #nav-title {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     text-align: center;
-    margin: 20px 0;
   }
- </style>
+
+  /* ===== 侧边目录 ===== */
+  #sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+  }
+  #sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: min(280px, 85vw);
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    z-index: 201;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  #sidebar.open { transform: translateX(0); }
+  #sidebar-overlay.open { display: block; }
+  .sidebar-head {
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar-head h2 { font-size: 1rem; font-weight: 600; }
+  .sidebar-head p { font-size: 0.75rem; color: var(--text-sub); margin-top: 2px; }
+  #chapter-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0.5rem 0;
+  }
+  .ch-link {
+    display: block;
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+    color: var(--text);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background 0.12s, border-color 0.12s;
+    cursor: pointer;
+  }
+  .ch-link:hover { background: var(--accent-light); }
+  .ch-link.active {
+    border-left-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+    font-weight: 500;
+  }
+
+  /* ===== 设置面板 ===== */
+  #settings-panel {
+    position: fixed;
+    top: var(--nav-h);
+    right: 0;
+    width: min(280px, 90vw);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 0 var(--radius);
+    padding: 1rem;
+    z-index: 150;
+    display: none;
+  }
+  #settings-panel.open { display: block; }
+  .setting-row { margin-bottom: 1rem; }
+  .setting-row label { font-size: 0.8rem; color: var(--text-sub); display: block; margin-bottom: 0.4rem; }
+  .theme-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .theme-btn {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    font-size: 0.78rem;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.15s;
+  }
+  .theme-btn.active { border-color: var(--accent); color: var(--accent); }
+  .font-ctrl { display: flex; align-items: center; gap: 8px; }
+  .font-ctrl button {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .font-ctrl span { flex: 1; text-align: center; font-size: 0.85rem; }
+
+  /* ===== 正文区域 ===== */
+  #reader-wrap {
+    padding-top: var(--nav-h);
+    min-height: 100vh;
+  }
+  /* 普通屏：单栏居中 */
+  #content-area {
+    max-width: var(--col-width);
+    margin: 0 auto;
+    padding: 2rem 1.5rem 1rem;
+  }
+  /* 超宽屏（≥1600px）：双栏 */
+  @media (min-width: 1600px) {
+    #content-area {
+      max-width: 1400px;
+      columns: 2;
+      column-gap: 4rem;
+    }
+    #chapter-heading { column-span: all; }
+  }
+  /* 超超宽（≥2400px）：三栏 */
+  @media (min-width: 2400px) {
+    #content-area {
+      max-width: 2200px;
+      columns: 3;
+      column-gap: 4rem;
+    }
+  }
+
+  #chapter-heading {
+    font-size: 1.3rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 2.5rem;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  /* ★ Bug1 修复：正确渲染 md 段落间距 */
+  #content-body p {
+    font-size: var(--font-size);
+    line-height: var(--line-h);
+    margin-bottom: 1.4em;
+    text-indent: 2em;
+    word-break: break-all;
+  }
+  #content-body p:last-child { margin-bottom: 0; }
+
+  #loading-tip {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+  }
+
+  /* ===== 翻页条 ===== */
+  #pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.5rem;
+    max-width: var(--col-width);
+    margin: 0 auto;
+  }
+  .pg-btn {
+    padding: 0.6rem 1.5rem;
+    border-radius: 24px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .pg-btn:hover:not(:disabled) { background: var(--accent-light); border-color: var(--accent); }
+  .pg-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  #page-info { font-size: 0.8rem; color: var(--text-sub); text-align: center; }
+
+  /* ===== 小屏（手机/手表）：全屏点击翻页 ===== */
+  /* ≤480px 时隐藏翻页按钮，改成点击屏幕左右半区翻页 */
+  #tap-hint {
+    display: none;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-sub);
+    padding: 0.5rem;
+    opacity: 0.7;
+  }
+  @media (max-width: 480px) {
+    #pager { display: none; }
+    #tap-hint { display: block; }
+    #content-area { padding: 1.25rem 1rem 0.5rem; }
+    #chapter-heading { font-size: 1.1rem; margin-bottom: 1.75rem; }
+    /* 点击区域覆盖全屏 */
+    #tap-prev, #tap-next {
+      position: fixed;
+      top: var(--nav-h);
+      bottom: 0;
+      width: 40%;
+      z-index: 50;
+      cursor: pointer;
+    }
+    #tap-prev { left: 0; }
+    #tap-next { right: 0; }
+  }
+  /* 极小屏（手表级，≤200px） */
+  @media (max-width: 200px) {
+    :root { --font-size: 13px; --nav-h: 40px; }
+    #nav-title { font-size: 0.72rem; }
+    .nav-btn { padding: 4px; font-size: 0.85rem; }
+    #chapter-heading { font-size: 0.95rem; margin-bottom: 1.25rem; }
+    #tap-hint { font-size: 0.6rem; }
+  }
+
+  /* ===== 进度条 ===== */
+  #progress-bar {
+    position: fixed;
+    top: var(--nav-h);
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    width: 0%;
+    z-index: 99;
+    transition: width 0.1s;
+  }
+</style>
 </head>
 <body>
 
-<nav>
-  <button onclick="toggleSidebar()" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer">☰</button>
-  <a href="index.html">← 书架</a>
+<!-- 点击翻页透明层（小屏） -->
+<div id="tap-prev" onclick="changePage(-1)"></div>
+<div id="tap-next" onclick="changePage(1)"></div>
+
+<!-- 顶部导航 -->
+<nav id="topnav">
+  <button class="nav-btn" onclick="toggleSidebar()" title="目录" aria-label="目录">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="1.5" rx="0.75" fill="currentColor"/><rect x="2" y="8.25" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="2" y="12.5" width="12" height="1.5" rx="0.75" fill="currentColor"/></svg>
+  </button>
+  <a href="index.html" class="nav-btn" title="书架" aria-label="返回书架" style="text-decoration:none">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9L9 3l6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+  </a>
   <span id="nav-title">加载中...</span>
+  <button class="nav-btn" onclick="toggleSettings()" title="设置" aria-label="阅读设置">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M9 2v1.5M9 14.5V16M2 9h1.5M14.5 9H16M3.93 3.93l1.06 1.06M13.01 13.01l1.06 1.06M3.93 14.07l1.06-1.06M13.01 4.99l1.06-1.06" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  </button>
 </nav>
 
-<div id="sidebar">
-  <h3>目录</h3>
+<!-- 阅读进度条 -->
+<div id="progress-bar"></div>
+
+<!-- 目录侧边栏 -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside id="sidebar">
+  <div class="sidebar-head">
+    <h2 id="sidebar-title">目录</h2>
+    <p id="sidebar-sub"></p>
+  </div>
   <div id="chapter-list"></div>
+</aside>
+
+<!-- 设置面板 -->
+<div id="settings-panel">
+  <div class="setting-row">
+    <label>主题</label>
+    <div class="theme-btns">
+      <button class="theme-btn active" onclick="setTheme('default',this)">默认</button>
+      <button class="theme-btn" onclick="setTheme('dark',this)">夜间</button>
+      <button class="theme-btn" onclick="setTheme('green',this)">护眼</button>
+      <button class="theme-btn" onclick="setTheme('parchment',this)">羊皮纸</button>
+    </div>
+  </div>
+  <div class="setting-row">
+    <label>字号</label>
+    <div class="font-ctrl">
+      <button onclick="adjustFont(-1)">A-</button>
+      <span id="font-size-display">18px</span>
+      <button onclick="adjustFont(1)">A+</button>
+    </div>
+  </div>
+  <div class="setting-row">
+    <label>行距</label>
+    <div class="font-ctrl">
+      <button onclick="adjustLine(-0.1)">↕-</button>
+      <span id="line-h-display">2.0</span>
+      <button onclick="adjustLine(0.1)">↕+</button>
+    </div>
+  </div>
 </div>
 
-<div id="content"><div id="loading">正在加载章节...</div></div>
-
-<div class="pager">
-  <button id="btn-prev" onclick="changePage(-1)" disabled>◀ 上一章</button>
-  <span id="page-info" style="align-self:center;color:#888;font-size:0.85rem"></span>
-  <button id="btn-next" onclick="changePage(1)">下一章 ▶</button>
-</div>
-
-<button class="fab" onclick="toggleSettings()">⚙</button>
-<div id="settings">
-  <label>背景色</label>
-  <select onchange="document.body.style.background=this.value">
-    <option value="#fdf6e3">护眼黄</option>
-    <option value="#e8f5e9">清新绿</option>
-    <option value="#ffffff">纯白</option>
-    <option value="#1a1a1a">夜间模式</option>
-  </select>
-  <label style="margin-top:0.75rem;display:block">字号</label>
-  <input type="range" min="14" max="22" value="17" oninput="document.querySelectorAll('#content p').forEach(p=>p.style.fontSize=this.value+'px')">
+<!-- 正文 -->
+<div id="reader-wrap">
+  <div id="content-area">
+    <h1 id="chapter-heading"></h1>
+    <div id="content-body"><div id="loading-tip">正在加载...</div></div>
+  </div>
+  <div id="pager">
+    <button class="pg-btn" id="btn-prev" onclick="changePage(-1)" disabled>← 上一章</button>
+    <div id="page-info"></div>
+    <button class="pg-btn" id="btn-next" onclick="changePage(1)">下一章 →</button>
+  </div>
+  <p id="tap-hint">← 点左侧上一章 · 点右侧下一章 →</p>
 </div>
 
 <script>
-  const params = new URLSearchParams(location.search);
-  const novelId = params.get("novel");
-  let currentChapter = parseInt(params.get("chapter")) || 1;
-  let novelInfo = null;
+// ===== 状态 =====
+const params = new URLSearchParams(location.search);
+const novelId = params.get("novel") || "";
+let currentChapter = parseInt(params.get("chapter")) || 1;
+let novelInfo = null;
+let fontSize = parseInt(localStorage.getItem("fontSize") || "18");
+let lineH = parseFloat(localStorage.getItem("lineH") || "2");
+let theme = localStorage.getItem("theme") || "default";
 
-  async function init() {
-    // 加载小说信息
+// ===== 初始化 =====
+async function init() {
+  applyFont();
+  applyTheme(theme);
+
+  try {
     const res = await fetch(`novels/${novelId}/info.json`);
+    if (!res.ok) throw new Error("info.json 加载失败");
     novelInfo = await res.json();
-    document.title = novelInfo.title;
-    document.getElementById("nav-title").textContent = novelInfo.title;
-
-    // 渲染目录
-    const list = document.getElementById("chapter-list");
-    novelInfo.chapters.forEach(ch => {
-      const a = document.createElement("a");
-      a.textContent = ch.title;
-      a.href = "#";
-      a.onclick = (e) => { e.preventDefault(); goToChapter(ch.id); toggleSidebar(); };
-      a.id = `ch-link-${ch.id}`;
-      list.appendChild(a);
-    });
-
-    loadChapter(currentChapter);
+  } catch(e) {
+    document.getElementById("loading-tip").textContent = "❌ 无法加载书籍信息，请检查 info.json 是否存在";
+    return;
   }
 
-  async function loadChapter(num) {
-    currentChapter = num;
-    const url = `novels/${novelId}/${num}.md`;
-    history.replaceState(null, "", `?novel=${novelId}&chapter=${num}`);
+  document.title = novelInfo.title + " · 阅读";
+  document.getElementById("nav-title").textContent = novelInfo.title;
+  document.getElementById("sidebar-title").textContent = novelInfo.title;
+  document.getElementById("sidebar-sub").textContent = `共 ${novelInfo.chapters.length} 章`;
 
-    document.getElementById("loading").style.display = "block";
-    const content = document.getElementById("content");
-    content.innerHTML = "<div id='loading'>正在加载...</div>";
+  buildChapterList();
 
-    const res = await fetch(url);
-    const md = await res.text();
-    content.innerHTML = marked.parse(md);
-    window.scrollTo(0, 0);
+  // ★ Bug2 修复：监听 popstate，浏览器前进/后退时正确跳章节
+  window.addEventListener("popstate", () => {
+    const p = new URLSearchParams(location.search);
+    const ch = parseInt(p.get("chapter")) || 1;
+    loadChapter(ch, false); // false = 不再 pushState
+  });
 
-    // 更新翻页按钮
-    const total = novelInfo.chapters.length;
-    document.getElementById("btn-prev").disabled = num <= 1;
-    document.getElementById("btn-next").disabled = num >= total;
-    document.getElementById("page-info").textContent = `${num} / ${total}`;
+  loadChapter(currentChapter, false);
+  initProgress();
+}
 
-    // 高亮当前章节
-    document.querySelectorAll("#chapter-list a").forEach(a => a.classList.remove("active"));
-    const cur = document.getElementById(`ch-link-${num}`);
-    if (cur) { cur.classList.add("active"); cur.scrollIntoView({ block: "nearest" }); }
+// ===== 构建目录 =====
+function buildChapterList() {
+  const list = document.getElementById("chapter-list");
+  list.innerHTML = "";
+  novelInfo.chapters.forEach(ch => {
+    const a = document.createElement("div");
+    a.className = "ch-link";
+    a.id = `cl-${ch.id}`;
+    a.textContent = ch.title;
+    a.onclick = () => { goToChapter(ch.id); closeSidebar(); };
+    list.appendChild(a);
+  });
+}
+
+// ===== 加载章节 =====
+// ★ Bug2 核心修复：用 pushState 更新 URL，不触发页面跳转
+async function loadChapter(num, push = true) {
+  currentChapter = num;
+  if (push) {
+    history.pushState({ chapter: num }, "", `?novel=${encodeURIComponent(novelId)}&chapter=${num}`);
   }
 
-  function changePage(dir) { loadChapter(currentChapter + dir); }
-  function goToChapter(id) { loadChapter(id); }
-  function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
-  function toggleSettings() {
-    const s = document.getElementById("settings");
-    s.style.display = s.style.display === "block" ? "none" : "block";
+  const heading = document.getElementById("chapter-heading");
+  const body = document.getElementById("content-body");
+  body.innerHTML = '<div id="loading-tip">加载中...</div>';
+  heading.textContent = "";
+
+  try {
+    const res = await fetch(`novels/${novelId}/${num}.md`);
+    if (!res.ok) throw new Error("章节文件不存在");
+    const raw = await res.text();
+
+    // ★ Bug1 核心修复：正确解析 md 的段落
+    // md 文件里段落用空行分隔，我们手动把它转成 <p> 标签
+    const lines = raw.split("\n");
+    let titleLine = "";
+    const paragraphs = [];
+    let currentPara = [];
+
+    for (const line of lines) {
+      const t = line.trim();
+      // ## 开头是章节标题
+      if (t.startsWith("## ") || t.startsWith("# ")) {
+        if (!titleLine) titleLine = t.replace(/^#+\s*/, "");
+        continue;
+      }
+      if (t === "") {
+        if (currentPara.length) { paragraphs.push(currentPara.join("")); currentPara = []; }
+      } else {
+        currentPara.push(t);
+      }
+    }
+    if (currentPara.length) paragraphs.push(currentPara.join(""));
+
+    heading.textContent = titleLine || (novelInfo.chapters.find(c => c.id === num)?.title || "");
+    body.innerHTML = paragraphs
+      .filter(p => p.length > 0)
+      .map(p => `<p>${escapeHtml(p)}</p>`)
+      .join("");
+
+  } catch(e) {
+    body.innerHTML = `<div id="loading-tip">❌ 章节加载失败：${e.message}</div>`;
   }
 
-  init();
+  window.scrollTo({ top: 0, behavior: "instant" });
+  updatePager();
+  updateActiveChapter();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ===== 翻页 =====
+function changePage(dir) {
+  const next = currentChapter + dir;
+  if (next < 1 || next > novelInfo.chapters.length) return;
+  loadChapter(next);
+}
+function goToChapter(id) { loadChapter(id); }
+
+// ===== 更新翻页按钮 =====
+function updatePager() {
+  const total = novelInfo.chapters.length;
+  document.getElementById("btn-prev").disabled = currentChapter <= 1;
+  document.getElementById("btn-next").disabled = currentChapter >= total;
+  document.getElementById("page-info").textContent = `${currentChapter} / ${total}`;
+}
+
+// ===== 高亮当前章节 =====
+function updateActiveChapter() {
+  document.querySelectorAll(".ch-link").forEach(a => a.classList.remove("active"));
+  const cur = document.getElementById(`cl-${currentChapter}`);
+  if (cur) { cur.classList.add("active"); cur.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+}
+
+// ===== 侧边栏 =====
+function toggleSidebar() {
+  document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("sidebar-overlay").classList.toggle("open");
+}
+function closeSidebar() {
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebar-overlay").classList.remove("open");
+}
+
+// ===== 设置面板 =====
+function toggleSettings() {
+  document.getElementById("settings-panel").classList.toggle("open");
+}
+document.addEventListener("click", e => {
+  const panel = document.getElementById("settings-panel");
+  if (!panel.contains(e.target) && !e.target.closest('[onclick="toggleSettings()"]')) {
+    panel.classList.remove("open");
+  }
+});
+
+// ===== 主题 =====
+function setTheme(t, btn) {
+  theme = t;
+  localStorage.setItem("theme", t);
+  applyTheme(t);
+  document.querySelectorAll(".theme-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+}
+function applyTheme(t) {
+  document.body.dataset.theme = t === "default" ? "" : t;
+  document.querySelectorAll(".theme-btn").forEach(b => {
+    b.classList.toggle("active", b.getAttribute("onclick").includes(`'${t}'`));
+  });
+}
+
+// ===== 字号 / 行距 =====
+function adjustFont(d) {
+  fontSize = Math.min(26, Math.max(13, fontSize + d));
+  localStorage.setItem("fontSize", fontSize);
+  applyFont();
+}
+function adjustLine(d) {
+  lineH = Math.min(3, Math.max(1.4, Math.round((lineH + d) * 10) / 10));
+  localStorage.setItem("lineH", lineH);
+  applyFont();
+}
+function applyFont() {
+  document.documentElement.style.setProperty("--font-size", fontSize + "px");
+  document.documentElement.style.setProperty("--line-h", lineH);
+  document.getElementById("font-size-display").textContent = fontSize + "px";
+  document.getElementById("line-h-display").textContent = lineH.toFixed(1);
+}
+
+// ===== 阅读进度条 =====
+function initProgress() {
+  window.addEventListener("scroll", () => {
+    const el = document.documentElement;
+    const pct = (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100;
+    document.getElementById("progress-bar").style.width = pct + "%";
+  });
+}
+
+// ===== 键盘左右箭头翻页 =====
+document.addEventListener("keydown", e => {
+  if (!novelInfo) return;
+  if (e.key === "ArrowLeft") changePage(-1);
+  if (e.key === "ArrowRight") changePage(1);
+});
+
+// ===== 启动 =====
+init();
 </script>
 </body>
 </html>

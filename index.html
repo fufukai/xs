@@ -1,55 +1,163 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>庭中三千梨花树，再无一朵入我心</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f5f0; color: #333; }
-    header { background: #2c2c2c; color: white; padding: 1.5rem 2rem; }
-    header h1 { font-size: 1.5rem; font-weight: 500; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; padding: 2rem; max-width: 1000px; margin: 0 auto; }
-    .card { background: white; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #e0e0e0; }
-    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-    .card-cover { width: 100%; aspect-ratio: 2/3; object-fit: cover; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
-    .card-info { padding: 0.75rem; }
-    .card-title { font-size: 0.95rem; font-weight: 500; margin-bottom: 0.25rem; }
-    .card-author { font-size: 0.8rem; color: #888; }
-    #loading { text-align: center; padding: 3rem; color: #888; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的书架</title>
+<style>
+  :root {
+    --bg: #f7f4ef;
+    --surface: #ffffff;
+    --border: #e8e2d9;
+    --text: #1a1814;
+    --text-sub: #6b6560;
+    --accent: #8b5e3c;
+    --accent-light: #f0e6da;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1814;
+      --surface: #242018;
+      --border: #3a352c;
+      --text: #f0ece4;
+      --text-sub: #9a9088;
+      --accent: #c49060;
+      --accent-light: #2a2018;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body { background: var(--bg); color: var(--text); font-family: "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header .logo { font-size: 1.4rem; }
+  header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; }
+  header p { font-size: 0.8rem; color: var(--text-sub); margin-top: 1px; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-sub);
+    margin-bottom: 1.25rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1.25rem;
+  }
+  @media (min-width: 600px) { .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); } }
+  @media (min-width: 1200px) { .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .card:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .card:active { transform: translateY(0); }
+
+  .cover {
+    aspect-ratio: 2/3;
+    background: var(--accent-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+
+  .card-body { padding: 0.75rem; }
+  .card-title { font-size: 0.9rem; font-weight: 600; line-height: 1.4; margin-bottom: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-author { font-size: 0.75rem; color: var(--text-sub); }
+  .card-count { font-size: 0.72rem; color: var(--text-sub); margin-top: 0.2rem; }
+
+  .empty { text-align: center; padding: 5rem 2rem; color: var(--text-sub); }
+  .empty .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+
+  @media (max-width: 200px) {
+    header { padding: 0.75rem; }
+    header h1 { font-size: 0.85rem; }
+    main { padding: 0.75rem; }
+    .grid { grid-template-columns: 1fr; gap: 0.75rem; }
+  }
+</style>
 </head>
 <body>
-  <header><h1>📚 开心颜</h1></header>
-  <div id="loading">加载中...</div>
-  <div class="grid" id="grid" style="display:none"></div>
+<header>
+  <span class="logo">📚</span>
+  <div>
+    <h1>我的书架</h1>
+    <p id="subtitle">正在加载...</p>
+  </div>
+</header>
+<main>
+  <p class="section-title">全部书目</p>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">
+    <div class="icon">📭</div>
+    <p>书架是空的，先往 novels/ 目录里放小说吧</p>
+  </div>
+</main>
+<script>
+// ★ 在这里填写你的小说文件夹名列表
+const NOVELS = [
+  "demo-novel"
+];
 
-  <script>
-    // 在这里列出你的所有小说文件夹名
-    const NOVELS = ["zhen-hun", "wuwuwuwuwuwu"];
-
-    async function loadNovels() {
-      const grid = document.getElementById("grid");
-      for (const id of NOVELS) {
-        try {
-          const res = await fetch(`novels/${id}/info.json`);
-          const info = await res.json();
-          const card = document.createElement("div");
-          card.className = "card";
-          card.innerHTML = `
-            <div class="card-cover">${info.emoji || "📖"}</div>
-            <div class="card-info">
-              <div class="card-title">${info.title}</div>
-              <div class="card-author">${info.author}</div>
-            </div>`;
-          card.onclick = () => location.href = `reader.html?novel=${id}&chapter=1`;
-          grid.appendChild(card);
-        } catch(e) { console.warn("加载失败:", id); }
-      }
-      document.getElementById("loading").style.display = "none";
-      grid.style.display = "grid";
-    }
-    loadNovels();
-  </script>
+async function load() {
+  const grid = document.getElementById("grid");
+  let count = 0;
+  for (const id of NOVELS) {
+    try {
+      const res = await fetch(`novels/${id}/info.json`);
+      if (!res.ok) continue;
+      const info = await res.json();
+      count++;
+      const a = document.createElement("a");
+      a.className = "card";
+      a.href = `reader.html?novel=${encodeURIComponent(id)}&chapter=1`;
+      a.innerHTML = `
+        <div class="cover">
+          ${info.cover ? `<img src="${info.cover}" alt="" loading="lazy">` : (info.emoji || "📖")}
+        </div>
+        <div class="card-body">
+          <div class="card-title">${info.title}</div>
+          <div class="card-author">${info.author || "佚名"}</div>
+          <div class="card-count">${info.chapters?.length || 0} 章</div>
+        </div>`;
+      grid.appendChild(a);
+    } catch(e) { console.warn("加载失败:", id, e); }
+  }
+  document.getElementById("subtitle").textContent = count ? `共 ${count} 部` : "暂无书目";
+  if (!count) {
+    document.getElementById("empty").style.display = "block";
+  }
+}
+load();
+</script>
 </body>
 </html>
